@@ -111,7 +111,7 @@ int main() {
     std::cout << "Rho   (AD) = " << call_rho   << "   (formula) = " << rho_formula   << "\n";
     std::cout << "Theta (AD) = " << call_theta << "   (formula) = " << theta_formula << "\n";
     std::cout << "Gamma (AD) = " << gamma      << "   (formula) = " << gamma_formula << "\n";
-    std::cout << "dPrice/dK  = " << call_dK    << "   (bonus: sensitivity to strike)\n\n";
+    std::cout << "dPrice/dK  = " << call_dK    << "   (sensitivity to strike)\n\n";
 
     std::cout << "-- Put Greeks --\n";
     std::cout << "Delta (AD) = " << put_delta << "\n";
