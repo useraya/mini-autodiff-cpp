@@ -1,6 +1,7 @@
 #pragma once
 #include "tape.hpp"
 #include <cmath>
+
 constexpr double PI = 3.14159265358979323846;
 
 // A Var is a number that also remembers its position on the tape,
@@ -69,7 +70,8 @@ inline Var sqrt(const Var& x) {
 // erf shows up in the normal distribution's CDF, which Black-Scholes needs
 inline Var erf(const Var& x) {
     double v = std::erf(x.value);
-double d = (2.0 / std::sqrt(PI)) * std::exp(-x.value * x.value);    int idx = tape().push_unary(x.index, d);
+    double d = (2.0 / std::sqrt(PI)) * std::exp(-x.value * x.value);
+    int idx = tape().push_unary(x.index, d);
     return Var(v, idx);
 }
 
