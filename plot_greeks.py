@@ -1,13 +1,11 @@
 import csv
 import matplotlib.pyplot as plt
 
-# Read the CSV written by greeks_surface.cpp -- no pandas needed, just
-# the standard library, so this has no extra dependencies to install
-# beyond matplotlib.
-S, price, delta, gamma, vega, rho, theta = [], [], [], [], [], [], []
-
 with open("greeks_data.csv") as f:
+    first_line = f.readline().strip()
+    K = float(first_line.split("=")[1])
     reader = csv.DictReader(f)
+    S, price, delta, gamma, vega, rho, theta = [], [], [], [], [], [], []
     for row in reader:
         S.append(float(row["S"]))
         price.append(float(row["price"]))
@@ -17,10 +15,8 @@ with open("greeks_data.csv") as f:
         rho.append(float(row["rho"]))
         theta.append(float(row["theta"]))
 
-K = 100.0  # strike, for the vertical reference line
-
 fig, axes = plt.subplots(2, 3, figsize=(15, 8))
-fig.suptitle("Black-Scholes Call: Price and Greeks vs Stock Price (computed via AD)", fontsize=13)
+fig.suptitle(f"Call Price and Greeks vs Stock Price (K={K:.0f}, computed via AD)", fontsize=13)
 
 plots = [
     (axes[0, 0], price, "Price"),
@@ -33,7 +29,7 @@ plots = [
 
 for ax, values, title in plots:
     ax.plot(S, values, linewidth=2, color="#2563eb")
-    ax.axvline(x=K, color="gray", linestyle="--", linewidth=1, label="Strike (K=100)")
+    ax.axvline(x=K, color="gray", linestyle="--", linewidth=1, label=f"Strike (K={K:.0f})")
     ax.set_title(title)
     ax.set_xlabel("Stock price (S)")
     ax.grid(alpha=0.3)

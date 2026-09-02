@@ -1,101 +1,79 @@
 # mini-autodiff-cpp
 
-A small automatic differentiation (AD) engine built from scratch in C++,
-applied to option pricing.
+An automatic differentiation (AD) engine built from scratch in C++ applied
+to option pricing.
 
-## What problem this solves
+## Why this exists
 
-In quantitative finance, banks need to know not just the price of a
-financial instrument, but how sensitive that price is to each input
-(stock price, volatility, interest rate, time). These sensitivities are
-called Greeks (Delta, Vega, Rho, Theta, Gamma).
+Pricing an option is one calculation. Knowing how that price reacts to
+changes in the stock price , volatility , interest rate , or time (the
+"Greeks") is what risk management actually needs , and it's normally either
+approximated by nudging inputs and re-running the whole pricer, or worked
+out by hand for each new model. AD gets exact sensitivities directly from
+the calculation itself , in one pass , for any number of inputs.
 
-The usual way to get them is to slightly nudge one input and re-run the
-whole pricing calculation to see how much the answer moved. This is slow
-(one extra full run per input) and only approximate.
+This project builds that technique from first principles: forward mode,
+then reverse mode, then second-order , then applies it to real pricing
+problems including a case with no closed-form answer to check against.
 
-Automatic differentiation instead gets exact derivatives directly from the
-calculation itself, in one pass, no matter how many inputs there are or
-how complicated the calculation is. This project implements that technique
-from first principles, then proves it works by applying it to real pricing
-problems.
-
-## What's included
-
-**Forward-mode AD** (`include/dual.hpp`)
-A `Dual` number that carries a value and its derivative together. Good for
-functions with a single input.
-
-**Reverse-mode / adjoint AD** (`include/tape.hpp`, `include/var.hpp`)
-A `Var` number that records every operation onto a shared tape as the
-calculation runs. Walking that tape backwards afterward gives the exact
-derivative with respect to every input at once, computed in a single pass.
-This is the technique that matters when there are many inputs and few
-outputs, like Greeks.
-
-**Black-Scholes Greeks** (`src/black_scholes_greeks.cpp`)
-Call and put pricing built with `Var`, giving Delta, Vega, Rho, Theta, and
-Gamma. Since Black-Scholes has known closed-form Greek formulas, this file
-is used to check the AD engine's answers are exactly correct.
-
-**Monte Carlo pricer with Greeks** (`src/monte_carlo_greeks.cpp`)
-The real point of the project. A European call is priced by simulating
-50,000 random stock price paths — there is no formula for a Greek here,
-only a simulation. A single backward pass through the entire simulation
-still produces Delta, Vega, Rho, and Theta, matching Black-Scholes within
-the expected statistical noise. This is what real derivatives desks
-actually need AD for: exotic and path-dependent options have no closed-form
-Greeks at all, and this same method applies to them unchanged — only the
-payoff function would need to change.
-
-## Why Black-Scholes shows up twice
-
-Black-Scholes is used only as a **validation case**, because its Greeks are
-already known, so it's possible to check the AD engine got the right
-answer. It is not the actual use case. The Monte Carlo file is the one that
-demonstrates the real value: getting exact-in-expectation sensitivities out
-of a calculation that has no formula to check against.
-
-## Build and run
+## Try it
 
 \`\`\`bash
-# forward mode demo
-g++ -std=c++17 -I include src/main.cpp -o demo
-./demo
-
-# Black-Scholes Greeks (calls, puts, Gamma)
-g++ -std=c++17 -I include src/black_scholes_greeks.cpp -o greeks
-./greeks
-
-# Monte Carlo Greeks with no closed-form formula
-g++ -std=c++17 -O2 -I include src/monte_carlo_greeks.cpp -o mc
-./mc
+g++ -std=c++17 -O2 -I include src/interactive_pricer.cpp -o pricer
+./pricer
 \`\`\`
 
-## Project structure
+It asks for a stock price, strike, rate, volatility, and expiry, prices a
+call and a put, prints every Greek, and writes two CSV files. Then:
 
+\`\`\`bash
+python plot_greeks.py
+python plot_mc_convergence.py
 \`\`\`
-mini-autodiff-cpp/
-├── include/
-│   ├── dual.hpp    # forward-mode AD
-│   ├── tape.hpp    # records operations for reverse-mode AD
-│   └── var.hpp     # reverse-mode AD number type, built on tape.hpp
-├── src/
-│   ├── main.cpp                  # forward-mode demo
-│   ├── black_scholes_greeks.cpp  # reverse-mode AD, validated against formulas
-│   └── monte_carlo_greeks.cpp    # reverse-mode AD through a simulation
-└── README.md
+
+produces \`greeks_plot.png\` (price and all Greeks across a range of stock
+prices) and \`mc_convergence_plot.png\` (how a Monte Carlo estimate settles
+toward the true price as more paths are simulated).
+
+![Greeks](greeks_plot.png)
+![Monte Carlo convergence](mc_convergence_plot.png)
+
+## What's in here
+
+| File | What it does |
+|---|---|
+| \`include/dual.hpp\` | Forward-mode AD (\`Dual\` numbers) |
+| \`include/tape.hpp\`, \`include/var.hpp\` | Reverse-mode AD (\`Var\` numbers on a recorded tape) |
+| \`include/tape2.hpp\`, \`include/var2.hpp\` | Generic version of the above, used for second-order AD |
+| \`include/black_scholes.hpp\` | Call/put pricing, written with \`Var\` |
+| \`include/black_scholes2.hpp\` | Same pricing formula, written generically |
+| \`include/black_scholes_formulas.hpp\` | Closed-form Greeks, for validation only |
+| \`src/main.cpp\` | Forward-mode demo |
+| \`src/black_scholes_greeks.cpp\` | Call/put Greeks via reverse-mode AD |
+| \`src/gamma_second_order.cpp\` | Exact Gamma via forward-over-reverse AD |
+| \`src/monte_carlo_greeks.cpp\` | Greeks from a Monte Carlo simulation — no formula involved |
+| \`src/interactive_pricer.cpp\` | Takes user input, prices, writes plot data |
+| \`src/greeks_surface.cpp\`, \`src/mc_convergence.cpp\` | Data generation for the two charts |
+| \`tests/test_black_scholes.cpp\` | Checks AD Greeks against formulas across 8 scenarios |
+
+## Why Black-Scholes shows up so often
+
+It's used as a validation case , not the actual point. Its Greeks are known
+in closed form , so it's possible to check the AD engine got the right
+answer. The Monte Carlo file is the one that shows the real use case:
+getting exact-in-expectation sensitivities from a calculation that has no
+formula to check against at all — which is the situation for most exotic
+and path-dependent options in practice.
+
+## Run the tests
+
+\`\`\`bash
+g++ -std=c++17 -I include tests/test_black_scholes.cpp -o test_bs
+./test_bs
 \`\`\`
 
 ## Inspiration
 
-This is a simplified version of the idea behind
-[XAD](https://github.com/auto-differentiation/xad), a production automatic
-differentiation library used in quantitative finance to compute risk
-sensitivities on real pricing models.
-
-## Possible next steps
-
-- Second-order AD (true Gamma, not the finite-difference approximation used here)
-- A path-dependent payoff with genuinely no closed-form Greeks (e.g. an Asian option)
-- Python bindings so the engine can be called from Python pricing code
+A simplified version of the idea behind
+[XAD](https://github.com/auto-differentiation/xad), a production AD library
+used in quantitative finance.
