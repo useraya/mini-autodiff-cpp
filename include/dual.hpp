@@ -60,3 +60,14 @@ inline Dual sqrt(const Dual& x) {
     double s = std::sqrt(x.value);
     return Dual(s, x.deriv / (2.0 * s));
 }
+// -x
+inline Dual operator-(const Dual& x) {
+    return Dual(-x.value, -x.deriv);
+}
+
+// erf(x)' = (2/sqrt(pi)) * exp(-x^2) * x'
+inline Dual erf(const Dual& x) {
+    constexpr double PI_D = 3.14159265358979323846;
+    double e = (2.0 / std::sqrt(PI_D)) * std::exp(-x.value * x.value);
+    return Dual(std::erf(x.value), e * x.deriv);
+}
